@@ -12,7 +12,7 @@ import argparse
 
 ################PARSER SECTION################
 parser = argparse.ArgumentParser()
-parser.add_argument("--ref", help="Path of genome file (fasta)")
+parser.add_argument("--ref", help="Path of genome file (.fasta)")
 parser.add_argument("--out", help="Path of the results file (.dp)")
 args = parser.parse_args()
 
@@ -52,7 +52,7 @@ results_BWT = get_BWT(sequence)
 
 ################CREATION OF OUT FILE################
 ### writing into a panda frame all information for reference sequence
-### and save it into a '.dp' file 
+### and save it into a '.dp' file
 d = {'SA[i]' : sa, 'F' : results_BWT[1], 'Sequence_BWT' : results_BWT[-1], 'BWT' : results_BWT[0]}
 df = pd.DataFrame(data = d)
 df.to_csv(str(args.out), encoding= 'utf-8', index=False, mode = 'w', header = True)
