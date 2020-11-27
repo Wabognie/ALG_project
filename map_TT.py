@@ -22,10 +22,16 @@ args = parser.parse_args()
 
 
 ################OPEN READS FILE################
-file = open('./reads.fasta', 'r')
+reads = open('./reads.fasta', 'r')
+ref = open('./reference.fasta','r')
+index = pd.read_csv('./index.pd', h = True)
 k_mer = 5
 
-
+sequence = ''
+for line in ref :
+    line = str(line).replace('\n','')
+    if '>' not in line :
+        sequence = str(line) + '$'
 
 ################BWT INFORMATION AND RESEARCH################
 def get_N(sequence):
@@ -36,7 +42,6 @@ def get_N(sequence):
         else :
             N[i]+=1
     return N
-#get_N("GGCGGCACCGC$")
 
 def LF(alpha, k,N):
     index = 0
@@ -78,17 +83,6 @@ def R_table(index,BWT) :
     return R[index]
 #R_table(4,get_BWT(sequence)[0])
 
-def get_S(BWT,N):
-    i = 0
-    S = BWT[i]+"$"
-
-    for i in range(len(BWT)-2):
-        next_i = LF(S[0],R_table(int(i),BWT), N)
-        S = BWT[next_i] + S
-        i = next_i
-        return S
-#get_S(get_BWT(sequence)[0], get_N(sequence))
-
 def get_querry(BWT, Q, N, BWT_list, sa) :
     last_char = Q[-1]
     i = LF(last_char,1,N)
@@ -115,13 +109,14 @@ def get_querry(BWT, Q, N, BWT_list, sa) :
 #get_querry(get_BWT(sequence)[0], "GG", get_N(sequence),get_BWT(sequence)[-1], sa)
 
 ################OPEN READS FILE################
-for line in file :
+for line in reads :
     line = str(line).replace('\n','')
     if '>' not in line :
         print(line)
         for x in range(0, len(line)-k_mer+1):
             print(line[x:k_mer])
             #get_querry(get_BWT(sequence)[0], str(line[x:k_mer]), get_N(sequence),get_BWT(sequence)[-1], sa)
+            get_querry(get_BWT(sequence)[0], str(line[x:k_mer]), get_N(sequence),get_BWT(sequence)[-1], sa)
             k_mer +=1
 
 
