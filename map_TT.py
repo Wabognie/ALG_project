@@ -22,11 +22,11 @@ args = parser.parse_args()
 
 
 ################OPEN READS FILE################
-reads = open('./reads.fasta', 'r')
 ref = open('./reference.fasta','r')
-index = pd.read_csv('./index.pd', h = True)
+index = pd.read_csv('./index.dp')
 k_mer = 5
 
+################CREATE SEQUENCE WITH $################
 sequence = ''
 for line in ref :
     line = str(line).replace('\n','')
@@ -68,7 +68,6 @@ def LF(alpha, k,N):
         index = int(N["$"])+int(N["A"])+int(N["C"])+int(N["G"])+k-1
         #print(index)
         return(index)
-#LF("G",3,get_N(sequence))
 
 def R_table(index,BWT) :
     ##retourne l'index de la lettre dans la liste F : si 0 de BWT = C1 -> return de 1
@@ -81,7 +80,6 @@ def R_table(index,BWT) :
     	R.append(N[letter])
 
     return R[index]
-#R_table(4,get_BWT(sequence)[0])
 
 def get_querry(BWT, Q, N, BWT_list, sa) :
     last_char = Q[-1]
@@ -100,25 +98,54 @@ def get_querry(BWT, Q, N, BWT_list, sa) :
         i = LF(BWT[i_min],R_table(i_min, BWT),N)
         j = LF(BWT[j_max],R_table(j_max, BWT),N)
 
-        print(i)
-        print(j)
-        if int(i) == int(j) :
-            print(sa[i])
-        else :
-            print("SA I : " + str(sa[i]) + "/ / "+ str(sa[j]))
+    #print(i)
+    #print(j)
+    if int(i) == int(j) :
+        #print(sa[i])
+        return(sa[i])
+    else :
+        #print("SA I : " + str(sa[i]) + "/ / "+ str(sa[j]))
+        return(sa[i], sa[j])
 #get_querry(get_BWT(sequence)[0], "GG", get_N(sequence),get_BWT(sequence)[-1], sa)
 
 ################OPEN READS FILE################
-for line in reads :
-    line = str(line).replace('\n','')
-    if '>' not in line :
-        print(line)
-        for x in range(0, len(line)-k_mer+1):
-            print(line[x:k_mer])
-            #get_querry(get_BWT(sequence)[0], str(line[x:k_mer]), get_N(sequence),get_BWT(sequence)[-1], sa)
-            get_querry(get_BWT(sequence)[0], str(line[x:k_mer]), get_N(sequence),get_BWT(sequence)[-1], sa)
-            k_mer +=1
+def search_querry(reads, k_mer, index) :
+    """
+    Function used to research all sa[i] k_mer position into reference genome
+    return a list of list with different elements
+    """
+    list_querry = []
+    for read_lines in reads :
+        read_lines = str(read_lines).replace('\n','')
+        if '>' not in read_lines :
+            kmer_sai = {}
+            first_sai = ''
+            k_mer_modified = k_mer
+            for x in range(0, len(read_lines)-k_mer_modified+1):
+                sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence),index['Sequence_BWT'], index['SA[i]'])
+                if x == 0 and sai_querry != '':
+                    first_sai = min(sai_querry)
+                elif str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
+                    kmer_sai[str(read_lines[x:k_mer_modified])] = sai_querry
 
+                k_mer_modified +=1
+            list_querry.append([first_sai, kmer_sai])
+
+
+    return(list_querry)
+querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv('./index.dp'))
+##search_querry(open(str(args.reads), 'r'), args.k_mer, open(str(args.index), 'r'))
+
+def seed_and_extend(reads, ref) :
+    n = 0
+    for read_lines in reads :
+        print(str(querry_found[n]) + '\n')
+        read_lines = str(read_lines).replace('\n','')
+        for ref_lines in ref :
+            ref_lines = str(ref_lines).replace('\n','')
+
+        n+=1
+seed_and_extend(open('./reads_bis.fasta', 'r'), open('./reference.fasta','r'))
 
 """
 Recuperation des reads dans le fichiers, etrecuperation de la table de burrow wheller (faite avec le index.py)
@@ -135,7 +162,4 @@ comptage des substitutions
 
 retourner l'alignement entre les deux : entre genome et reads
 stockage des infos dans le fichier vcf
-
-
-
 """
