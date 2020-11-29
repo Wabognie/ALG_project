@@ -8,6 +8,7 @@ Tiphaine Casy
 import pandas as pd
 import sys
 import argparse
+import time
 
 ################PARSER SECTION################
 parser = argparse.ArgumentParser()
@@ -20,8 +21,10 @@ parser.add_argument("--min_abundance", help="Maximal abundance of variant")
 parser.add_argument("--out", help="Path of out file (.vcf)")
 args = parser.parse_args()
 
+################TIME COUNT################
+start = time.time()
 
-################OPEN READS FILE################
+################OPEN FILES################
 ref = open('./reference.fasta','r')
 index = pd.read_csv('./index.dp')
 k_mer = 5
@@ -103,9 +106,10 @@ def get_querry(BWT, Q, N, BWT_list, sa) :
     if int(i) == int(j) :
         #print(sa[i])
         return(sa[i])
-    else :
-        #print("SA I : " + str(sa[i]) + "/ / "+ str(sa[j]))
-        return(sa[i], sa[j])
+    found_sai = []
+    for t in range(i,j+1) :
+            found_sai.append(sa[t])
+    return(found_sai)
 #get_querry(get_BWT(sequence)[0], "GG", get_N(sequence),get_BWT(sequence)[-1], sa)
 
 ################OPEN READS FILE################
@@ -119,33 +123,40 @@ def search_querry(reads, k_mer, index) :
         read_lines = str(read_lines).replace('\n','')
         if '>' not in read_lines :
             kmer_sai = {}
-            first_sai = ''
             k_mer_modified = k_mer
             for x in range(0, len(read_lines)-k_mer_modified+1):
                 sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence),index['Sequence_BWT'], index['SA[i]'])
-                if x == 0 and sai_querry != '':
-                    first_sai = min(sai_querry)
-                elif str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
+                if str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
                     kmer_sai[str(read_lines[x:k_mer_modified])] = sai_querry
 
                 k_mer_modified +=1
-            list_querry.append([first_sai, kmer_sai])
+            list_querry.append(kmer_sai)
 
 
     return(list_querry)
 querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv('./index.dp'))
 ##search_querry(open(str(args.reads), 'r'), args.k_mer, open(str(args.index), 'r'))
 
-def seed_and_extend(reads, ref) :
-    n = 0
-    for read_lines in reads :
-        print(str(querry_found[n]) + '\n')
-        read_lines = str(read_lines).replace('\n','')
-        for ref_lines in ref :
-            ref_lines = str(ref_lines).replace('\n','')
 
-        n+=1
-seed_and_extend(open('./reads_bis.fasta', 'r'), open('./reference.fasta','r'))
+"""
+TO DO HERE : read genome with little sa[i] found for querry and compare
+"""
+def seed_and_extend(reads, ref, querry_found) :
+    print(querry_found)
+seed_and_extend(open('./reads_bis.fasta', 'r'), open('./reference.fasta','r'),querry_found)
+
+################TIME COUNT################
+end = time.time()
+
+time_to_analyse = end-start
+print("TIME FOR ANALYSE : " + str(round(time_to_analyse,3)) + " secondes")
+
+
+
+
+
+
+
 
 """
 Recuperation des reads dans le fichiers, etrecuperation de la table de burrow wheller (faite avec le index.py)
