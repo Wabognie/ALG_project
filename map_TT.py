@@ -25,9 +25,10 @@ args = parser.parse_args()
 start = time.time()
 
 ################OPEN FILES################
-ref = open('./reference.fasta','r')
-index = pd.read_csv('./index.dp')
-k_mer = 5
+ref = open('./reference.fasta','r') ##args.ref
+index = pd.read_csv('./index.dp') ##args.index
+k_mer = 5 ##args.k
+max_hamming = 6 ##args.max_hamming
 
 ################CREATE SEQUENCE WITH $################
 sequence = ''
@@ -101,15 +102,12 @@ def get_querry(BWT, Q, N, BWT_list, sa) :
         i = LF(BWT[i_min],R_table(i_min, BWT),N)
         j = LF(BWT[j_max],R_table(j_max, BWT),N)
 
-    #print(i)
-    #print(j)
     if int(i) == int(j) :
-        #print(sa[i])
         return(sa[i])
     found_sai = []
     for t in range(i,j+1) :
             found_sai.append(sa[t])
-    return(found_sai)
+    return(sorted(found_sai))
 #get_querry(get_BWT(sequence)[0], "GG", get_N(sequence),get_BWT(sequence)[-1], sa)
 
 ################OPEN READS FILE################
@@ -124,6 +122,7 @@ def search_querry(reads, k_mer, index) :
         if '>' not in read_lines :
             kmer_sai = {}
             k_mer_modified = k_mer
+
             for x in range(0, len(read_lines)-k_mer_modified+1):
                 sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence),index['Sequence_BWT'], index['SA[i]'])
                 if str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
@@ -141,9 +140,60 @@ querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv(
 """
 TO DO HERE : read genome with little sa[i] found for querry and compare
 """
-def seed_and_extend(reads, ref, querry_found) :
-    print(querry_found)
-seed_and_extend(open('./reads_bis.fasta', 'r'), open('./reference.fasta','r'),querry_found)
+def comparison(or_sequence, reads, start_comparison, max_substitution) :
+    substitution = 0
+    index_subs = []
+    comparison_changed = start_comparison
+    for x in range(len(reads)-1):
+        if or_sequence[comparison_changed] != reads[x]:
+            substitution +=1
+            result = (or_sequence[start_comparison], start_comparison, reads[x])
+            index_subs.append(result)
+        comparison_changed+=1
+
+    #print(substitution)
+    #print(index_subs)
+    if substitution == 0 :
+        print("Nb of substitution : " + str(substitution) + ' - - ' + str(start_comparison))
+        return substitution, start_comparison
+
+    elif substitution < max_substitution :
+        print("Nb of substitution : " + str(substitution) + ' - - ' + str(start_comparison))
+        return substitution, start_comparison
+
+def seed_and_extend(reads, ref, querry_found, max_hamming) :
+    sequence_ref = ''
+    for ref_line in ref :
+        ref_line = str(ref_line).replace('\n','')
+        if '>' not in ref_line :
+            sequence_ref = ref_line
+    reads_list = []
+    for reads_line in reads :
+        reads_line = str(reads_line).replace('\n','')
+        if '>' not in reads_line :
+            reads_list.append(reads_line)
+
+    for x in range(0,len(querry_found)) : ##open each read saved into dictionnary
+        substitution = 0
+        itera = next(iter(querry_found[x]))
+        #print(querry_found[x][itera])
+        #print(itera)
+        #print(querry_found[x][itera])
+        #### test sur le premier kmer trouve
+        for i in range(len(querry_found[x][itera])) :
+            comparison(str(sequence_ref), str(reads_list[x]),querry_found[x][itera][i], max_hamming)
+
+
+
+
+
+
+        #for key in querry_found[x].keys() : ##open each sa[i] values of each k_mer for each reads
+            #print("KEY : " + str(key) + " ** " + str(querry_found[x][key]))
+            #print("BLABLABLA : " + str(next(iter(querry_found[x]))))
+        #print(len(querry_found[x]))
+
+seed_and_extend(open('./reads_bis.fasta', 'r'), open('./reference.fasta','r'),querry_found, max_hamming)
 
 ################TIME COUNT################
 end = time.time()
