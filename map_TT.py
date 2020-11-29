@@ -85,7 +85,7 @@ def R_table(index,BWT) :
 
     return R[index]
 
-def get_querry(BWT, Q, N, BWT_list, sa) :
+def get_querry(BWT, Q, N, sa) :
     last_char = Q[-1]
     i = LF(last_char,1,N)
     j = LF(last_char, N[last_char], N)
@@ -124,8 +124,8 @@ def search_querry(reads, k_mer, index) :
             k_mer_modified = k_mer
 
             for x in range(0, len(read_lines)-k_mer_modified+1):
-                sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence),index['Sequence_BWT'], index['SA[i]'])
-                if str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
+                sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
+                if sai_querry != '' and str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
                     kmer_sai[str(read_lines[x:k_mer_modified])] = sai_querry
 
                 k_mer_modified +=1
@@ -139,17 +139,22 @@ querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv(
 
 """
 TO DO HERE : read genome with little sa[i] found for querry and compare
+
+BECAREFULL : IF NOT SA[i] FOUND DO REVERSE TRANSCRIPTION OF READ (ex : read 4 and read 10)
 """
 def comparison(or_sequence, reads, start_comparison, max_substitution) :
     substitution = 0
     index_subs = []
     comparison_changed = start_comparison
-    for x in range(len(reads)-1):
-        if or_sequence[comparison_changed] != reads[x]:
-            substitution +=1
-            result = (or_sequence[start_comparison], start_comparison, reads[x])
-            index_subs.append(result)
-        comparison_changed+=1
+    if start_comparison < len(or_sequence)-len(reads) :
+
+
+        for x in range(len(reads)-1):
+            if or_sequence[comparison_changed] != reads[x]:
+                substitution +=1
+                result = (or_sequence[start_comparison], start_comparison, reads[x])
+                index_subs.append(result)
+            comparison_changed+=1
 
     #print(substitution)
     #print(index_subs)
@@ -175,7 +180,7 @@ def seed_and_extend(reads, ref, querry_found, max_hamming) :
 
     for x in range(0,len(querry_found)) : ##open each read saved into dictionnary
         substitution = 0
-        itera = next(iter(querry_found[x]))
+        itera = next(iter(querry_found[x])) ##take the first value of list so the first k_mer, it's can maybe an other
         #print(querry_found[x][itera])
         #print(itera)
         #print(querry_found[x][itera])
