@@ -89,8 +89,9 @@ def get_querry(BWT, Q, N, sa) :
     last_char = Q[-1]
     i = LF(last_char,1,N)
     j = LF(last_char, N[last_char], N)
-    i_min = 0
-    j_max = 0
+    i_min = -1
+    j_max = -1
+    breaker = False
     for x in reversed(range(len(Q)-1)):
         index = []
         for l in range(i, j+1):
@@ -99,16 +100,35 @@ def get_querry(BWT, Q, N, sa) :
                 i_min = min(index)
                 j_max = max(index)
 
-        i = LF(BWT[i_min],R_table(i_min, BWT),N)
-        j = LF(BWT[j_max],R_table(j_max, BWT),N)
+        if i_min >=0 and j_max >=0 :
+            i = LF(BWT[i_min],R_table(i_min, BWT),N)
+            j = LF(BWT[j_max],R_table(j_max, BWT),N)
+        else :
+            breaker = True
 
+    found_sai = []
+    if breaker :
+        return('')
     if int(i) == int(j) :
         return(sa[i])
-    found_sai = []
     for t in range(i,j+1) :
-            found_sai.append(sa[t])
+        found_sai.append(sa[t])
+
     return(sorted(found_sai))
 #get_querry(get_BWT(sequence)[0], "GG", get_N(sequence),get_BWT(sequence)[-1], sa)
+
+def reverse_transcript(sequence):
+    new_sequence = ''
+    for x in reversed(range(len(sequence))):
+        if "G" == sequence[x] :
+            new_sequence += "C"
+        if "A" == sequence[x]:
+            new_sequence += "T"
+        if "C" == sequence[x]:
+            new_sequence+="G"
+        if "T" == sequence[x]:
+            new_sequence+="A"
+    return(new_sequence)
 
 ################OPEN READS FILE################
 def search_querry(reads, k_mer, index) :
@@ -126,7 +146,7 @@ def search_querry(reads, k_mer, index) :
             for x in range(0, len(read_lines)-k_mer_modified+1):
                 sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
                 if sai_querry != '' and str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
-                    kmer_sai[str(read_lines[x:k_mer_modified])] = sai_querry
+                    kmer_sai[str(read_lines[x:k_mer_modified])] = sai_querry ##(sai_querry,x)
 
                 k_mer_modified +=1
             list_querry.append(kmer_sai)
@@ -147,8 +167,6 @@ def comparison(or_sequence, reads, start_comparison, max_substitution) :
     index_subs = []
     comparison_changed = start_comparison
     if start_comparison < len(or_sequence)-len(reads) :
-
-
         for x in range(len(reads)-1):
             if or_sequence[comparison_changed] != reads[x]:
                 substitution +=1
@@ -157,7 +175,7 @@ def comparison(or_sequence, reads, start_comparison, max_substitution) :
             comparison_changed+=1
 
     #print(substitution)
-    #print(index_subs)
+    print(index_subs)
     if substitution == 0 :
         print("Nb of substitution : " + str(substitution) + ' - - ' + str(start_comparison))
         return substitution, start_comparison
@@ -172,6 +190,7 @@ def seed_and_extend(reads, ref, querry_found, max_hamming) :
         ref_line = str(ref_line).replace('\n','')
         if '>' not in ref_line :
             sequence_ref = ref_line
+
     reads_list = []
     for reads_line in reads :
         reads_line = str(reads_line).replace('\n','')
@@ -179,9 +198,9 @@ def seed_and_extend(reads, ref, querry_found, max_hamming) :
             reads_list.append(reads_line)
 
     for x in range(0,len(querry_found)) : ##open each read saved into dictionnary
-        substitution = 0
+        #substitution = 0
         itera = next(iter(querry_found[x])) ##take the first value of list so the first k_mer, it's can maybe an other
-        #print(querry_found[x][itera])
+        #print(querry_found[x])
         #print(itera)
         #print(querry_found[x][itera])
         #### test sur le premier kmer trouve
@@ -208,6 +227,11 @@ print("TIME FOR ANALYSE : " + str(round(time_to_analyse,3)) + " secondes")
 
 
 
+"""
+
+ADD NUMBER OF K_MER TO KNOW WHERE WE ARE INTO THE ORIGIN sequence
+SUBSTRACT NB - start_comparison
+"""
 
 
 
