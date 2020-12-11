@@ -144,45 +144,48 @@ def search_querry(reads, k_mer, index) :
     return a list of list with different elements
     """
     list_querry = []
+    read_information = {}
     for read_lines in reads :
         read_lines = str(read_lines).replace('\n','')
         reverse_read_lines = reverse_transcript(str(read_lines))
+
         if '>' not in read_lines :
             kmer_sai = {}
             k_mer_modified = k_mer
+            if "+" not in read_information.keys() and "-" not in read_information.keys():
+                read_information['+'] = [str(read_lines)]
+                read_information['-'] = [str(reverse_read_lines)]
+            else :
+                read_information['+'].append(str(read_lines))
+                read_information['-'].append(str(reverse_read_lines))
+
+
 
             for x in range(0, len(read_lines)-k_mer_modified+1):
                 sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
+
                 if sai_querry != '':
-                    if str(read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
-                        kmer_sai[str(read_lines[x:k_mer_modified])] = sai_querry ##(sai_querry,x)
+                    kmer_sai[str(read_lines[x:k_mer_modified]),x] = [sai_querry,x, "+"] ##(sai_querry,x)
 
                 else :
                     sai_querry = get_querry(index['BWT'],str(reverse_read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
-                    if str(reverse_read_lines[x:k_mer_modified]) not in kmer_sai.keys() :
-                        kmer_sai[str(reverse_read_lines[x:k_mer_modified])] = sai_querry ##(sai_querry,x)
+                    kmer_sai[str(reverse_read_lines[x:k_mer_modified]),x] = [sai_querry,x, "-"] ##(sai_querry,x)
+                    #if sai_querry == '':
+                        #kmer_sai[str(reverse_read_lines[x:k_mer_modified]),x] = ["NONE",x, "None"]
 
                 k_mer_modified +=1
             list_querry.append(kmer_sai)
 
-
-    return(list_querry)
+    return(list_querry,read_information)
 querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv('./index.dp'))
-##search_querry(open(str(args.reads), 'r'), args.k_mer, open(str(args.index), 'r'))
 
-
-"""
-TO DO HERE : read genome with little sa[i] found for querry and compare
-
-BECAREFULL : IF NOT SA[i] FOUND DO REVERSE TRANSCRIPTION OF READ (ex : read 4 and read 10)
-A VOIR : P-E FAIRE UNE FONCTION POUR CREER LA LISTE DES KMER
-"""
-
-def comparison(or_sequence, reads, start_comparison, max_substitution) :
-    substitution = 0
+def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_mer) :
+    substitution = 1000
     index_subs = []
+    subs = ''
     comparison_changed = start_comparison
     if start_comparison < len(or_sequence)-len(reads) :
+        substitution = 0
         for x in range(len(reads)-1):
             if or_sequence[comparison_changed] != reads[x]:
                 substitution +=1
@@ -190,80 +193,66 @@ def comparison(or_sequence, reads, start_comparison, max_substitution) :
                 index_subs.append(result)
             comparison_changed+=1
 
-    #print(substitution)
-    #print(index_subs)
-    if substitution == 0 :
-        print("Nb of substitution : " + str(substitution) + ' - - ' + str(start_comparison))
-        return substitution, start_comparison
 
-    elif substitution < max_substitution :
-        print("Nb of substitution : " + str(substitution) + ' - - ' + str(start_comparison))
-        return substitution, start_comparison
-
-def seed_and_extend(reads, ref, querry_found, max_hamming) :
-    sequence_ref = ''
-    for ref_line in ref :
-        ref_line = str(ref_line).replace('\n','')
-        if '>' not in ref_line :
-            sequence_ref = ref_line
-
-    reads_list = []
-    for reads_line in reads :
-        reads_line = str(reads_line).replace('\n','')
-        if '>' not in reads_line :
-            reads_list.append(reads_line)
-
-    for x in range(0,len(querry_found)) : ##open each read saved into dictionnary
-        #substitution = 0
-        itera = next(iter(querry_found[x])) ##take the first value of list so the first k_mer, it's can maybe an other
-        #print(querry_found[x])
-        #print(itera)
-        #print(querry_found[x][itera])
-        #### test sur le premier kmer trouve
-        for i in range(len(querry_found[x][itera])) :
-            comparison(str(sequence_ref), str(reads_list[x]),querry_found[x][itera][i], max_hamming)
+    return([substitution, start_comparison])
 
 
+import collections
+def seed_and_extend(sequence, querry_found, max_hamming) :
+    sequence = sequence[:-1]
+    sai_of_kmer = querry_found[0]
+    reads = querry_found[-1]
 
 
-        #for key in querry_found[x].keys() : ##open each sa[i] values of each k_mer for each reads
-            #print("KEY : " + str(key) + " ** " + str(querry_found[x][key]))
-            #print("BLABLABLA : " + str(next(iter(querry_found[x]))))
-        #print(len(querry_found[x]))
+    for x in range(0,len(sai_of_kmer)) : ##pour tous les reads
+        comparison_result = {}
+        for y in range(0,len(sai_of_kmer[x])): ##pour tous les k_mer de chaque reads
+            sai_values = list(sai_of_kmer[x].values())[y][0]
+            index_kmer = list(sai_of_kmer[x].values())[y][1]
+            k_mer_sens = list(sai_of_kmer[x].values())[y][-1]
 
-seed_and_extend(open('./reads_bis.fasta', 'r'), open('./reference.fasta','r'),querry_found, max_hamming)
+            read_good_sense = reads[k_mer_sens][x]
+            if isinstance(sai_values, list): ##verify if sai is a list or not
+                for i in sai_values :
+                    if i != '':
+                        start_comparison = int(i-index_kmer)
+                        if start_comparison >= 0 :
+                            results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
+                            if str(results[0]) not in comparison_result.keys():
+                                comparison_result[int(results[0])] = [(int(results[1]),k_mer_sens)]
+                            else :
+                                comparison_result[int(results[0])].append((int(results[1]),k_mer_sens))
+            else :
+                if sai_values != '' :
+                    start_comparison = int(sai_values-index_kmer)
+                    if start_comparison >= 0 :
+                        results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
+                        if str(results[0]) not in comparison_result.keys():
+                            comparison_result[int(results[0])] = [(int(results[1]),k_mer_sens)]
+                        else :
+                            comparison_result[int(results[0])].append((int(results[1]),k_mer_sens))
+
+
+
+        print(sorted(comparison_result.items()))
+        first_value_sort_dic = next(iter(sorted(comparison_result.items())))
+
+        substitution_min = first_value_sort_dic[0]
+
+        values = first_value_sort_dic[1]
+        min_seq_index = min(values, key = lambda t: t[0])
+
+        print("Nb substitution : " + str(substitution_min) + " - - " + str(min_seq_index))
+
+
+
+
+
+
+seed_and_extend(sequence, querry_found, max_hamming)
 
 ################TIME COUNT################
 end = time.time()
 
 time_to_analyse = end-start
 print("TIME FOR ANALYSE : " + str(round(time_to_analyse,3)) + " secondes")
-
-
-
-"""
-
-ADD NUMBER OF K_MER TO KNOW WHERE WE ARE INTO THE ORIGIN sequence
-SUBSTRACT NB - start_comparison
-"""
-
-
-
-
-
-"""
-Recuperation des reads dans le fichiers, etrecuperation de la table de burrow wheller (faite avec le index.py)
-k-mer : taille definie par l'utilisateur
-prendre tous les k-mer du read, le chercher dans la BWT en la remontant et return le sa[i] correspondant (PT : OPTIMISER)
-    dictionnaire : nb_kmer : [SA[i]]
-    attention sa[i]<taille du genome-taille du read (condition a respecter)
- pour tous les indexs du k-mer etend la lecture avec une comparaison de tous les nucleotides un a un, forward and reverse
-    si difference entre read et genome ref = substitution
-comptage des substitutions
-    choix de l'indexe avec le moins de substitutions, s'il en existe plusieurs c'est la position la plus a gauche dans le genome et donc l'indexe le plus faible
-
-    stockage des substitutions qqpart pour les reutiliser pour le document final
-
-retourner l'alignement entre les deux : entre genome et reads
-stockage des infos dans le fichier vcf
-"""
