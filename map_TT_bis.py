@@ -179,7 +179,6 @@ def search_querry(reads, k_mer, index) :
 querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv('./index.dp'))
 
 def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_mer) :
-    substitution = max_substitution
     index_subs = []
 
     comparison_changed = start_comparison
@@ -191,6 +190,7 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
                 result = (or_sequence[start_comparison], start_comparison, reads[x])
                 index_subs.append(result)
             comparison_changed+=1
+
         p = [substitution, start_comparison]
 
 
@@ -245,7 +245,9 @@ def seed_and_extend(sequence, querry_found, max_hamming) :
         values = first_value_sort_dic[1]
         min_seq_index = min(values, key = lambda t: t[0])
 
-        print("Nb substitution : " + str(substitution_min) + " - - " + str(min_seq_index))
+        if int(substitution_min) <= max_hamming :
+
+            print("Nb substitution : " + str(substitution_min) + " - - " + str(min_seq_index))
 
 
 
