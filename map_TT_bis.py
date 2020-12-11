@@ -8,7 +8,6 @@ Tiphaine Casy
 """
 ################IMPORT SECTION################
 import pandas as pd
-import sys
 import argparse
 import time
 
@@ -29,8 +28,8 @@ start = time.time()
 ################OPEN FILES################
 ref = open('./reference.fasta','r') ##args.ref
 index = pd.read_csv('./index.dp') ##args.index
-k_mer = 5 ##args.k
-max_hamming = 6 ##args.max_hamming
+k_mer = 19 ##args.k
+max_hamming = 5 ##args.max_hamming
 
 ################CREATE SEQUENCE WITH $################
 sequence = ''
@@ -180,11 +179,11 @@ def search_querry(reads, k_mer, index) :
 querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv('./index.dp'))
 
 def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_mer) :
-    substitution = 1000
+    substitution = max_substitution
     index_subs = []
-    subs = ''
+
     comparison_changed = start_comparison
-    if start_comparison < len(or_sequence)-len(reads) :
+    if start_comparison <= len(or_sequence)-len(reads) :
         substitution = 0
         for x in range(len(reads)-1):
             if or_sequence[comparison_changed] != reads[x]:
@@ -192,12 +191,12 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
                 result = (or_sequence[start_comparison], start_comparison, reads[x])
                 index_subs.append(result)
             comparison_changed+=1
+        p = [substitution, start_comparison]
 
 
-    return([substitution, start_comparison])
+    return(p)
 
 
-import collections
 def seed_and_extend(sequence, querry_found, max_hamming) :
     sequence = sequence[:-1]
     sai_of_kmer = querry_found[0]
@@ -219,22 +218,26 @@ def seed_and_extend(sequence, querry_found, max_hamming) :
                         if start_comparison >= 0 :
                             results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
                             if str(results[0]) not in comparison_result.keys():
-                                comparison_result[int(results[0])] = [(int(results[1]),k_mer_sens)]
+                                comparison_result[str(results[0])] = [(int(results[1]),k_mer_sens)]
                             else :
-                                comparison_result[int(results[0])].append((int(results[1]),k_mer_sens))
+                                comparison_result[str(results[0])].append((int(results[1]),k_mer_sens))
             else :
                 if sai_values != '' :
                     start_comparison = int(sai_values-index_kmer)
                     if start_comparison >= 0 :
                         results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
                         if str(results[0]) not in comparison_result.keys():
-                            comparison_result[int(results[0])] = [(int(results[1]),k_mer_sens)]
+                            comparison_result[str(results[0])] = [(int(results[1]),k_mer_sens)]
                         else :
-                            comparison_result[int(results[0])].append((int(results[1]),k_mer_sens))
+                            comparison_result[str(results[0])].append((int(results[1]),k_mer_sens))
 
 
+        #print(comparison_result)
+        #print(sorted(comparison_result.items()))
 
-        print(sorted(comparison_result.items()))
+        """
+        change str(value) for key in int
+        """
         first_value_sort_dic = next(iter(sorted(comparison_result.items())))
 
         substitution_min = first_value_sort_dic[0]
