@@ -185,7 +185,7 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
     comparison_changed = start_comparison
     if start_comparison <= len(or_sequence)-len(reads) :
         substitution = 0
-        for x in range(len(reads)-1):
+        for x in range(len(reads)):
             if or_sequence[comparison_changed] != reads[x]:
                 substitution +=1
                 result = (or_sequence[start_comparison], start_comparison, reads[x])
