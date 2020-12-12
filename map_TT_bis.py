@@ -28,8 +28,8 @@ start = time.time()
 ################OPEN FILES################
 ref = open('./reference.fasta','r') ##args.ref
 index = pd.read_csv('./index.dp') ##args.index
-k_mer = 19 ##args.k
-max_hamming = 5 ##args.max_hamming
+k_mer = 20 ##args.k
+max_hamming = 4 ##args.max_hamming
 
 ################CREATE SEQUENCE WITH $################
 sequence = ''
@@ -232,22 +232,27 @@ def seed_and_extend(sequence, querry_found, max_hamming) :
                             comparison_result[str(results[0])].append((int(results[1]),k_mer_sens))
 
 
+
         #print(comparison_result)
         #print(sorted(comparison_result.items()))
 
         """
         change str(value) for key in int
         """
-        first_value_sort_dic = next(iter(sorted(comparison_result.items())))
+        if bool(comparison_result):
+            first_value_sort_dic = next(iter(sorted(comparison_result.items())))
 
-        substitution_min = first_value_sort_dic[0]
+            substitution_min = first_value_sort_dic[0]
 
-        values = first_value_sort_dic[1]
-        min_seq_index = min(values, key = lambda t: t[0])
+            values = first_value_sort_dic[1]
+            min_seq_index = min(values, key = lambda t: t[0])
 
-        if int(substitution_min) <= max_hamming :
-
-            print("Nb substitution : " + str(substitution_min) + " - - " + str(min_seq_index))
+            if int(substitution_min) <= max_hamming :
+                print("read " + str(x+1))
+                print("Nb substitution : " + str(substitution_min) + " - - " + str(min_seq_index))
+        else :
+            print("read " + str(x+1))
+            print("not found")
 
 
 
