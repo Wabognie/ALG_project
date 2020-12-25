@@ -144,7 +144,7 @@ def reverse_transcript(sequence):
 def search_querry(reads, k_mer, index) :
     """
         This function searches correspondance(s) of kmers in a sequence thanks to its index.
-        
+
         :param reads: A fasta file containing sequences of nucleotids
         :param k_mer: The length used for the search of kmers
         :param index: The Burrows Wheeler index of a sequence, in format .dp
@@ -154,20 +154,20 @@ def search_querry(reads, k_mer, index) :
         :return: Return, for every kmer in given reads, the position in a sequence where it aligns, the number of the kmer in the read and the read direction.
                  Return the list of the reads for each sense as well.
         :rtype: dictionary
-        
+
         :Example:
-        
+
         An example of output is :
-        
+
         {('TCTGA', 0): [[301, 500], 0, '+'], ('CTGAT', 1): [501, 1, '+']}
-        
+
         The key of the dictionary includes the kmer and the position of this kmer in the read.
-        
+
         The values for each key respectively includes :
         - one or several positions in the genom correspondingto the kmer
         - the position of this kmer in the read
         - the sens of the strand where the correspondance is found, + for sense and - for antisense
-        
+
     """
     list_querry = []
     read_information = {}
@@ -196,20 +196,18 @@ def search_querry(reads, k_mer, index) :
                 else : #Find a new correspondance on the antisense strand and add it in the dictionary
                     sai_querry = get_querry(index['BWT'],str(reverse_read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
                     kmer_sai[str(reverse_read_lines[x:k_mer_modified]),x] = [sai_querry,x, "-"] ##(sai_querry,x)
-                    #if sai_querry == '':
-                        #kmer_sai[str(reverse_read_lines[x:k_mer_modified]),x] = ["NONE",x, "None"]
-
+                    
                 k_mer_modified +=1
             list_querry.append(kmer_sai)
 
     return(list_querry,read_information)
-querry_found = search_querry(open('./reads.fasta', 'r'), k_mer, pd.read_csv('./index.dp'))
+querry_found = search_querry(open('./reads_bis.fasta', 'r'), k_mer, pd.read_csv('./index.dp'))
 
 def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_mer) :
-    
+
     '''
         Align two sequences from a given position and return the number of substition and the starting alignment position
-        
+
         :param or_sequence: A sequence of nucleotide
         :param reads: A fasta file containing sequences of nucleotids
         :param start_comparison: The position of the beginning of alignment
@@ -223,7 +221,7 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
         :return: The number of substitutions and the position of the beginning of alignement
         :rtype: list
     '''
-    
+
     index_subs = []
 
     comparison_changed = start_comparison
@@ -236,30 +234,33 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
                 index_subs.append(result)
             comparison_changed+=1
 
-        p = [start_comparison,index_subs]
+        if len(index_subs) <= max_substitution:
+            p = [start_comparison,index_subs]
 
-
+        else :
+            p = ['','']
     return(p)
 
-
+from collections import Counter
 def seed_and_extend(sequence, querry_found, max_hamming) :
-    
+
     """
         Displays the read ID and its best mapping position and the number of substitions observed
-        
+
         :param sequence: A sequence of nucleotide
         :param querry_found: The output of the function search_querry()
         :param max_hamming: The maximum number of substitutions allowed
         :type sequence: string
         :type querry_found: dictionary
         :type max_hamming: int
-        
-        
+
+
     """
     sequence = sequence[:-1]
     sai_of_kmer = querry_found[0]
     reads = querry_found[-1]
 
+    substituion_info = []
 
     for x in range(0,len(sai_of_kmer)) : ##For each read
         comparison_result = {}
@@ -270,9 +271,9 @@ def seed_and_extend(sequence, querry_found, max_hamming) :
             k_mer_sens = list(sai_of_kmer[x].values())[y][-1]
 
             read_good_sense = reads[k_mer_sens][x]
-            if isinstance(sai_values, list): ##verify if there is several positions of alignment 
+            if isinstance(sai_values, list): ##verify if there is several positions of alignment
                 for i in sai_values : #For each correspondance
-                    if i != '': 
+                    if i != '':
                         start_comparison = int(i-index_kmer)
                         if start_comparison >= 0 and start_comparison not in list_of_position:
                             results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
@@ -282,7 +283,7 @@ def seed_and_extend(sequence, querry_found, max_hamming) :
                                 comparison_result[(results[0])].append((results[1],k_mer_sens))
                             list_of_position.append(start_comparison)
             else : # One correspondance only
-                if sai_values != '' : 
+                if sai_values != '' :
                     start_comparison = int(sai_values-index_kmer)
                     if start_comparison >= 0 and start_comparison not in list_of_position:
                         results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
@@ -292,41 +293,26 @@ def seed_and_extend(sequence, querry_found, max_hamming) :
                                 comparison_result[(results[0])].append((results[1],k_mer_sens))
                         list_of_position.append(start_comparison)
 
-        
-        
-        #for key in comparison_result.keys():
-            #print(len(comparison_result[key][0][0]))
-        #print(sorted(comparison_result.items()))
-    
+        for key in comparison_result.keys():
+            for i in comparison_result[key][0][0] :
+                substituion_info.append(i)
 
-        
+    vcf_creation = Counter(substituion_info)
+    position_subsitution = []
+    original_nucleotide = []
+    reads_nucleotide = []
+    number_substitution = []
 
-        """
-        change str(value) for key in int
-        """
-        
-#         if bool(comparison_result): #Find the lowest number of substitutions in the dictionary, then find the farthest left alignment
-#             #first_value_sort_dic = next(iter(sorted(comparison_result.items(), key=lambda t: len(t[0][0]))))
-#             first_value_sort_dic = sorted(comparison_result.items(), key=lambda t: len(t[0][0]))
-#             print(first_value_sort_dic)
-# 
-#             substitution_min = first_value_sort_dic[0]
-# 
-#             values = first_value_sort_dic[1]
-#             min_seq_index = min(values, key = lambda t: t[0])
-#             
-#             #Print the result
-#             if int(substitution_min) <= max_hamming :
-#                 print("read " + str(x+1))
-#                 print("Nb substitution : " + str(substitution_min) + " - - " + str(min_seq_index))
-#         else :
-#             print("read " + str(x+1))
-#             print("not found")
+    for key in vcf_creation.keys():
+        position_subsitution.append(key[1])
+        original_nucleotide.append(key[0])
+        reads_nucleotide.append(key[-1])
+        number_substitution.append(vcf_creation[key])
 
-
-
-
-
+    print(number_substitution)
+    d = {'position_subsitution' : position_subsitution, 'original_nucleotide' : original_nucleotide, 'reads_nucleotide' : reads_nucleotide, 'Number of substitution' : number_substitution}
+    df = pd.DataFrame(data = d)
+    df.to_csv(str('blabla.txt'), index = False, encoding= 'utf-8', mode = 'w', header = True)
 
 seed_and_extend(sequence, querry_found, max_hamming)
 
@@ -335,5 +321,3 @@ end = time.time()
 
 time_to_analyse = end-start
 print("TIME FOR ANALYSE : " + str(round(time_to_analyse,3)) + " secondes")
-
-
