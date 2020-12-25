@@ -196,7 +196,7 @@ def search_querry(reads, k_mer, index) :
                 else : #Find a new correspondance on the antisense strand and add it in the dictionary
                     sai_querry = get_querry(index['BWT'],str(reverse_read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
                     kmer_sai[str(reverse_read_lines[x:k_mer_modified]),x] = [sai_querry,x, "-"] ##(sai_querry,x)
-                    
+
                 k_mer_modified +=1
             list_querry.append(kmer_sai)
 
@@ -312,7 +312,7 @@ def seed_and_extend(sequence, querry_found, max_hamming) :
     print(number_substitution)
     d = {'position_subsitution' : position_subsitution, 'original_nucleotide' : original_nucleotide, 'reads_nucleotide' : reads_nucleotide, 'Number of substitution' : number_substitution}
     df = pd.DataFrame(data = d)
-    df.to_csv(str('blabla.txt'), index = False, encoding= 'utf-8', mode = 'w', header = True)
+    df.to_csv(str('vcf_file.txt'), index = False, encoding= 'utf-8', mode = 'w', header = True)
 
 seed_and_extend(sequence, querry_found, max_hamming)
 
