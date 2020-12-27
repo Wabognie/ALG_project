@@ -22,38 +22,6 @@ parser.add_argument("--min_abundance", help="Maximal abundance of variant", type
 parser.add_argument("--out", help="Path of out file (.vcf)", type = str, default=argparse.SUPPRESS)
 args = parser.parse_args()
 
-if format(args) != 'Namespace()':
-
-    ref = open(str(args.ref), 'r')
-    index = pd.read_csv(str(args.index))
-    reads = args.reads
-    k_mer = args.k
-    max_hamming = args.max_hamming
-    min_abundance = args.min_abundance
-    output = args.out
-
-    information_file = open(str(output), 'w')
-    information_file.write('REFERENCE : ' + str('reference.fasta') + '\n')
-    information_file.write('READS : ' + str('reads.fasta') + '\n')
-    information_file.write('K : ' + str(k_mer) + '\n')
-    information_file.write('MAX_SUBS : ' + str(max_hamming) + '\n')
-    information_file.write('MIN_ABUNDANCE : ' + str(min_abundance) + '\n')
-    information_file.write('\n')
-    information_file.write('SUBSTITUTION INFORMATION \n')
-    information_file.close()
-
-    ################READ AND KEEPBACK SEQUENCE OF INPUT FILE################
-    sequence = ''
-    for line in ref :
-        line = str(line).replace('\n','')
-        if '>' not in line :
-            sequence = str(line) + '$'
-
-    seed_and_extend(sequence, search_querry(open(str(reads), 'r'), k_mer, pd.read_csv(str(index))), max_hamming, min_abundance, output)
-else :
-    print("Duty to inform all argues to search substitutions \n")
-    print("For some help write : \'mapper.py --help\' in control terminal")
-
 ################TIME COUNT################
 start = time.time()
 
@@ -241,13 +209,17 @@ def search_querry(reads, k_mer, index) :
         - the sens of the strand where the correspondance is found, + for sense and - for antisense
 
     """
+    end = time.time()
+    time_to_analyse = end-start
+    print("TIME FOR ANALYSE BEGIN SEARCH: " + str(round(time_to_analyse,3)) + " secondes")
     list_querry = []
     read_information = {}
     for read_lines in reads : #Read the file in both senses
         read_lines = str(read_lines).replace('\n','')
-        reverse_read_lines = reverse_transcript(str(read_lines))
+
 
         if '>' not in read_lines : #Indicates which read is on which strand.
+            reverse_read_lines = reverse_transcript(str(read_lines))
             kmer_sai = {}
             k_mer_modified = k_mer
             if "+" not in read_information.keys() and "-" not in read_information.keys():
@@ -272,7 +244,13 @@ def search_querry(reads, k_mer, index) :
                 k_mer_modified +=1
             list_querry.append(kmer_sai)
 
+    end = time.time()
+    time_to_analyse = end-start
+    print("TIME FOR ANALYSE END SEARCH: " + str(round(time_to_analyse,3)) + " secondes")    
+
     return(list_querry,read_information)
+
+
 
 def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_mer) :
     '''
@@ -291,6 +269,8 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
         :return: The number of substitutions and the position of the beginning of alignement
         :rtype: list
     '''
+
+
     index_subs = []
 
     comparison_changed = start_comparison
@@ -321,6 +301,10 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
         :type querry_found: dictionary
         :type max_hamming: int
     """
+    end = time.time()
+
+    time_to_analyse = end-start
+    print("TIME FOR ANALYSE BEGIN SEED: " + str(round(time_to_analyse,3)) + " secondes")
     sequence = sequence[:-1]
     sai_of_kmer = querry_found[0]
     reads = querry_found[-1]
@@ -341,22 +325,19 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
                     if i != '':
                         start_comparison = int(i-index_kmer)
                         if start_comparison >= 0 and start_comparison not in list_of_position:
-                            results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
-                            if (results[0]) not in comparison_result.keys(): #If the number of substitutions is not already in the dictionary, create a new key
-                                comparison_result[(results[0])] = [(results[1],k_mer_sens)]
-                            else : #Else, add the results to the existing key
-                                comparison_result[(results[0])].append((results[1],k_mer_sens))
                             list_of_position.append(start_comparison)
             else : # One correspondance only
                 if sai_values != '' :
                     start_comparison = int(sai_values-index_kmer)
                     if start_comparison >= 0 and start_comparison not in list_of_position:
-                        results = comparison(sequence, read_good_sense, start_comparison, max_hamming, index_kmer)
-                        if (results[0]) not in comparison_result.keys(): #If the number of substitutions is not already in the dictionary, create a new key
-                                comparison_result[(results[0])] = [(results[1],k_mer_sens)]
-                        else : #Else, add the results to the existing key
-                                comparison_result[(results[0])].append((results[1],k_mer_sens))
                         list_of_position.append(start_comparison)
+
+            for pos in list_of_position :
+                results = comparison(sequence, read_good_sense, pos, max_hamming, index_kmer)
+                if (results[0]) not in comparison_result.keys(): #If the number of substitutions is not already in the dictionary, create a new key
+                    comparison_result[(results[0])] = [(results[1],k_mer_sens)]
+                else : #Else, add the results to the existing key
+                    comparison_result[(results[0])].append((results[1],k_mer_sens))
 
         for key in comparison_result.keys():
             for i in comparison_result[key][0][0] :
@@ -378,6 +359,40 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
     df = pd.DataFrame(data = d)
     df = df.sort_values('POS')
     df.to_csv(str(output), index = False, encoding= 'utf-8', mode = 'a', header = True, sep='\t')
+
+
+################CHECK IF PARSER IS FULL################
+if format(args) != 'Namespace()':
+
+    ref = open(str(args.ref), 'r')
+    index = pd.read_csv(str(args.index))
+    reads = open(str(args.reads), 'r')
+    k_mer = args.k
+    max_hamming = args.max_hamming
+    min_abundance = args.min_abundance
+    output = args.out
+
+    information_file = open(str(output), 'w')
+    information_file.write('REFERENCE : ' + str('reference.fasta') + '\n')
+    information_file.write('READS : ' + str('reads.fasta') + '\n')
+    information_file.write('K : ' + str(k_mer) + '\n')
+    information_file.write('MAX_SUBS : ' + str(max_hamming) + '\n')
+    information_file.write('MIN_ABUNDANCE : ' + str(min_abundance) + '\n')
+    information_file.write('\n')
+    information_file.write('SUBSTITUTION INFORMATION \n')
+    information_file.close()
+
+    ################READ AND KEEPBACK SEQUENCE OF INPUT FILE################
+    sequence = ''
+    for line in ref :
+        line = str(line).replace('\n','')
+        if '>' not in line :
+            sequence = str(line) + '$'
+
+    seed_and_extend(sequence, search_querry(reads, k_mer, index), max_hamming, min_abundance, output)
+else :
+    print("Obligation to inform all argues to search substitutions \n")
+    print("For some help write : \'mapper.py --help\' in control terminal")
 
 ################TIME COUNT################
 end = time.time()
