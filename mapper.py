@@ -9,6 +9,7 @@ Tiphaine Casy
 import pandas as pd
 import argparse
 import time
+from progress.bar import Bar
 from collections import Counter
 
 ################PARSER SECTION################
@@ -26,7 +27,7 @@ args = parser.parse_args()
 start = time.time()
 
 ################BWT INFORMATION AND RESEARCH################
-def get_N(sequence):
+def get_N(BWT):
     """
     Function used to count all A,T,C and G present in the reference sequence
 
@@ -36,52 +37,12 @@ def get_N(sequence):
     :return:    For each nucleotide return its count
     :rtype:     dictionnary -> key : nucleotide (A,T,C or G) ; value : count
     """
-    N = {}
-    for i in sequence :
-        if i not in N.keys():
-            N[i]=1
-        else :
-            N[i]+=1
-    return N
+    n = {"$": 0, "A": 0, "C":0, "G": 0, "T":0} # key = letter, value = number of occurrences
+    for letter in BWT:
+        n[letter] += 1
+    return n
 
-def LF(alpha, k,N):
-    """
-    Function used to attribute a rank for each ordered nucleotides (first value of Burrows Wheeler sequence, 'F'), starting with "$"
-
-    :param alpha: reading nucleotide
-    :param k: number of line in Burrows Wheeler index
-    :param N: dictionary created in "get_F" function
-
-    :type alpha: string
-    :type k: int
-    :type N: dictionnary -> key : nucleotide (A,T,C or G) ; value : count
-
-
-    :return:    number of each sorted first nucleotides of Burrows Wheeler sequcence ('F')
-    :rtype:     int
-    """
-
-    index = 0
-    if alpha == "$":
-        return(index)
-
-    if alpha == "A" :
-        index = int(N["$"])+k-1
-        return(index)
-
-    if alpha == "C" :
-        index = int(N["$"])+int(N["A"])+k-1
-        return(index)
-
-    if alpha == "G" :
-        index = int(N["$"])+int(N["A"])+int(N["C"])+k-1
-        return(index)
-
-    if alpha == "T" :
-        index = int(N["$"])+int(N["A"])+int(N["C"])+int(N["G"])+k-1
-        return(index)
-
-def R_table(index,BWT) :
+def R_table(BWT) :
     """
     Function used to indicate the rank of the BWT nucleotide (so, the last nucleotide of Burrows Wheeler sequence)
     example : if the first Burrows Wheeler sequence (so index "0") is "C1" this function returns "1"
@@ -95,17 +56,16 @@ def R_table(index,BWT) :
     :return:   list of dictionaries with count of each nucleotides already seen
     :rtype:    list
     """
-    R = []
-    N = {}
-    for letter in BWT :
-        if letter not in N :
-            N[letter] = 0
-        N[letter] += 1
-        R.append(N[letter])
+    n = {} # key = letter, value = number of occurrences
+    r = [] # for each i: rank of the i^th value in bwt
+    for letter in BWT:
+        if letter not in n:
+            n[letter] = 0
+        n[letter] += 1
+        r.append(n[letter])
+    return r
 
-    return R[index]
-
-def get_querry(BWT, Q, N, sa) :
+def get_querry(pattern: str, bwt: str, n: {}, r: [], sa: [int]) :
     """
     Function used to research a querry into the Burrows Wheeler
 
@@ -124,39 +84,42 @@ def get_querry(BWT, Q, N, sa) :
                               if there are many positions -> list of int
     """
 
-    last_char = Q[-1]
-    i = LF(last_char,1,N)
-    j = LF(last_char, N[last_char], N)
-    i_min = -1
-    j_max = -1
+    start = 0
+    stop = len(bwt)-1
+    # read the pattern from right to left
+    for pos_pattern in range (len(pattern)-1,-1,-1):
+        current_char = pattern[pos_pattern]
+        new_start = get_down(bwt, current_char, start, stop)
+        if new_start == -1:
+            return []
+        new_stop = get_up(bwt, current_char, start, stop)
+        start = left_first(bwt[new_start], r[new_start], n)
+        stop = left_first(bwt[new_stop], r[new_stop], n)
+    res = []
+    for i in range(start, stop+1):
+        res.append(sa[i])
+    return res
 
-    breaker = False
-    for x in reversed(range(len(Q)-1)):
-        index = []
-        for l in range(i, j+1):
-            if str(BWT[l]) == str(Q[x]) :
-                index.append(l)
-                i_min = min(index)
-                j_max = max(index)
+def get_down(bwt: str, alpha: chr, start: int, stop: int) -> int:
+    """
+    Detects the first occurrence of alpha in bwt for i in [start, stop].
 
-        if len(index) == 0:
-            breaker = True
-        if i_min >=0 and j_max >=0:
-            i = LF(BWT[i_min],R_table(i_min, BWT),N)
-            j = LF(BWT[j_max],R_table(j_max, BWT),N)
+    From start go down in the bwt as long as bwt[line] != alpha and line <= stop
+      - if bwt[line] == alpha, returns the corresponding line
+      - if line > stop: returns -1
+    """
+    line = start
+    while line <= stop:
+        if bwt[line] == alpha: return line
+        line += 1
+    return -1
 
-        else :
-            breaker = True
-
-    found_sai = []
-    if breaker :
-        return('')
-    if int(i) == int(j) :
-        return(sa[i])
-    for t in range(i,j+1) :
-        found_sai.append(sa[t])
-
-    return(sorted(found_sai))
+def get_up(bwt: str, alpha: chr, start: int, stop: int) -> int:
+    line = stop
+    while line >= start:
+        if bwt[line] == alpha: return line
+        line -= 1
+    return -1
 
 def reverse_transcript(sequence):
     '''
@@ -179,6 +142,15 @@ def reverse_transcript(sequence):
         if "T" == sequence[x]:
             new_sequence+="A"
     return(new_sequence)
+
+def left_first(alpha: chr, k: int, n: {}) -> int:
+    assert k<= n[alpha], f"Cannot ask for the {k}^th {alpha}, it does not exist"
+    if alpha == "$": return 0
+    if alpha == "A": return n["$"] + k - 1
+    if alpha == "C": return n["$"] + n["A"] + k - 1
+    if alpha == "G": return n["$"] + n["A"] + n["C"] + k - 1
+    if alpha == "T": return n["$"] + n["A"] + n["C"] + n["G"] + k - 1
+    raise ValueError(f"Character {alpha} not in the bwt")
 
 ################OPEN READS FILE################
 def search_querry(reads, k_mer, index) :
@@ -209,15 +181,10 @@ def search_querry(reads, k_mer, index) :
         - the sens of the strand where the correspondance is found, + for sense and - for antisense
 
     """
-    end = time.time()
-    time_to_analyse = end-start
-    print("TIME FOR ANALYSE BEGIN SEARCH: " + str(round(time_to_analyse,3)) + " secondes")
     list_querry = []
     read_information = {}
     for read_lines in reads : #Read the file in both senses
         read_lines = str(read_lines).replace('\n','')
-
-
         if '>' not in read_lines : #Indicates which read is on which strand.
             reverse_read_lines = reverse_transcript(str(read_lines))
             kmer_sai = {}
@@ -229,24 +196,17 @@ def search_querry(reads, k_mer, index) :
                 read_information['+'].append(str(read_lines))
                 read_information['-'].append(str(reverse_read_lines))
 
-
-
             for x in range(0, len(read_lines)-k_mer_modified+1): #Search correspondance in the genome
-                sai_querry = get_querry(index['BWT'], str(read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
-
-                if sai_querry != '': #Find a new correspondance on the sense strand and add it in the dictionary
+                sai_querry = get_querry(str(read_lines[x:k_mer_modified]),index['BWT'], get_N(index['BWT']),R_table(index['BWT']), index['SA[i]'])
+                if sai_querry: #Verify if the list is full Find a new correspondance on the sense strand and add it in the dictionary
                     kmer_sai[str(read_lines[x:k_mer_modified]),x] = [sai_querry,x, "+"] ##(sai_querry,x)
 
                 else : #Find a new correspondance on the antisense strand and add it in the dictionary
-                    sai_querry = get_querry(index['BWT'],str(reverse_read_lines[x:k_mer_modified]), get_N(sequence), index['SA[i]'])
+                    sai_querry = get_querry(str(reverse_read_lines[x:k_mer_modified]),index['BWT'], get_N(index['BWT']),R_table(index['BWT']), index['SA[i]'])
                     kmer_sai[str(reverse_read_lines[x:k_mer_modified]),x] = [sai_querry,x, "-"] ##(sai_querry,x)
 
                 k_mer_modified +=1
             list_querry.append(kmer_sai)
-
-    end = time.time()
-    time_to_analyse = end-start
-    print("TIME FOR ANALYSE END SEARCH: " + str(round(time_to_analyse,3)) + " secondes")    
 
     return(list_querry,read_information)
 
@@ -305,10 +265,11 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
 
     time_to_analyse = end-start
     print("TIME FOR ANALYSE BEGIN SEED: " + str(round(time_to_analyse,3)) + " secondes")
+
+
     sequence = sequence[:-1]
     sai_of_kmer = querry_found[0]
     reads = querry_found[-1]
-
     substituion_info = []
 
     for x in range(0,len(sai_of_kmer)) : ##For each read
@@ -326,11 +287,6 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
                         start_comparison = int(i-index_kmer)
                         if start_comparison >= 0 and start_comparison not in list_of_position:
                             list_of_position.append(start_comparison)
-            else : # One correspondance only
-                if sai_values != '' :
-                    start_comparison = int(sai_values-index_kmer)
-                    if start_comparison >= 0 and start_comparison not in list_of_position:
-                        list_of_position.append(start_comparison)
 
             for pos in list_of_position :
                 results = comparison(sequence, read_good_sense, pos, max_hamming, index_kmer)
@@ -338,6 +294,7 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
                     comparison_result[(results[0])] = [(results[1],k_mer_sens)]
                 else : #Else, add the results to the existing key
                     comparison_result[(results[0])].append((results[1],k_mer_sens))
+
 
         for key in comparison_result.keys():
             for i in comparison_result[key][0][0] :
