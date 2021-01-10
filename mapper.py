@@ -92,9 +92,11 @@ def get_querry(pattern: str, bwt: str, n: {}, r: [], sa: [int]) :
         new_start = get_down(bwt, current_char, start, stop)
         if new_start == -1:
             return []
-        new_stop = get_up(bwt, current_char, start, stop)
-        start = left_first(bwt[new_start], r[new_start], n)
-        stop = left_first(bwt[new_stop], r[new_stop], n)
+        else :
+            new_stop = get_up(bwt, current_char, start, stop)
+            start = left_first(bwt[new_start], r[new_start], n)
+            stop = left_first(bwt[new_stop], r[new_stop], n)
+
     res = []
     for i in range(start, stop+1):
         res.append(sa[i])
@@ -110,14 +112,16 @@ def get_down(bwt: str, alpha: chr, start: int, stop: int) -> int:
     """
     line = start
     while line <= stop:
-        if bwt[line] == alpha: return line
+        if bwt[line] == alpha:
+            return line
         line += 1
     return -1
 
 def get_up(bwt: str, alpha: chr, start: int, stop: int) -> int:
     line = stop
     while line >= start:
-        if bwt[line] == alpha: return line
+        if bwt[line] == alpha:
+            return line
         line -= 1
     return -1
 
@@ -153,7 +157,7 @@ def left_first(alpha: chr, k: int, n: {}) -> int:
     raise ValueError(f"Character {alpha} not in the bwt")
 
 ################OPEN READS FILE################
-def search_querry(reads, k_mer, index, N, R) :
+def search_querry(reads, k_mer, index, N, R, max_hamming) :
     """
         This function searches correspondance(s) of kmers in a sequence thanks to its index.
 
@@ -185,10 +189,8 @@ def search_querry(reads, k_mer, index, N, R) :
     list_querry = []
     read_information = {}
     for read_lines in reads : #Read the file in both senses
-        print(read_lines)
         read_lines = str(read_lines).replace('\n','')
         if '>' not in read_lines : #Indicates which read is on which strand.
-
             reverse_read_lines = reverse_transcript(str(read_lines))
             kmer_sai = {}
             k_mer_modified = k_mer
@@ -307,10 +309,12 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
             original_nucleotide.append(key[0])
             reads_nucleotide.append(key[-1])
             number_substitution.append(vcf_creation[key])
+        else :
+            break
     d = {'POS' : position_subsitution, 'REF' : original_nucleotide, 'ALT' : reads_nucleotide, 'ABUNDANCE' : number_substitution}
     df = pd.DataFrame(data = d)
     df = df.sort_values('POS')
-    df.to_csv(str(output), index = False, encoding= 'utf-8', mode = 'a', header = True, sep='\t')
+    df.to_csv(str(output), index = False, encoding= 'utf-8', mode = 'a', header = False, sep='\t')
     print("END")
 
 ################CHECK IF PARSER IS FULL################
@@ -325,13 +329,13 @@ if format(args) != 'Namespace()':
     output = args.out
 
     information_file = open(str(output), 'w')
-    information_file.write('REFERENCE : ' + str('reference.fasta') + '\n')
-    information_file.write('READS : ' + str('reads.fasta') + '\n')
-    information_file.write('K : ' + str(k_mer) + '\n')
-    information_file.write('MAX_SUBS : ' + str(max_hamming) + '\n')
-    information_file.write('MIN_ABUNDANCE : ' + str(min_abundance) + '\n')
-    information_file.write('\n')
-    information_file.write('SUBSTITUTION INFORMATION \n')
+    information_file.write('##REFERENCE : ' + str('reference.fasta') + '\n')
+    information_file.write('##READS : ' + str('reads.fasta') + '\n')
+    information_file.write('##K : ' + str(k_mer) + '\n')
+    information_file.write('##MAX_SUBS : ' + str(max_hamming) + '\n')
+    information_file.write('##MIN_ABUNDANCE : ' + str(min_abundance) + '\n')
+    information_file.write('##SUBSTITUTION INFORMATION \n')
+    information_file.write('#POS' + '\t' + str('REF') + '\t' + str('ALT') + '\t' + str('ABUNDANCE INFORMATION') + '\n')
     information_file.close()
 
     ################READ AND KEEPBACK SEQUENCE OF INPUT FILE################
@@ -340,7 +344,7 @@ if format(args) != 'Namespace()':
         line = str(line).replace('\n','')
         if '>' not in line :
             sequence = str(line) + '$'
-    seed_and_extend(sequence, search_querry(reads, k_mer, index,get_N(index["BWT"]),R_table(index["BWT"])), max_hamming, min_abundance, output)
+    seed_and_extend(sequence, search_querry(reads, k_mer, index,get_N(index["BWT"]),R_table(index["BWT"]), max_hamming), max_hamming, min_abundance, output)
 else :
     print("Obligation to inform all argues to search substitutions \n")
     print("For some help write : \'mapper.py --help\' in control terminal")
