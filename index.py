@@ -21,7 +21,7 @@ args = parser.parse_args()
 start = time.time()
 
 ################F,i,BWT KEEP BACK################
-def get_BWT(sequence):
+def get_BWT(sequence,sa):
     """
     Function used to keep back sorted Burrows Wheeler sequences
 
@@ -35,21 +35,10 @@ def get_BWT(sequence):
     """
     ### function used to keep back sorted BW sequences into a list('BWT_list')
     ### first letter of BW sequences ('F') and last one ('BWT')
-    BWT_list = []
-    BWT_list.append(sequence)
-    for i in range(len(sequence)-1) :
-        sequence = sequence[1:]+sequence[0]
-        if str(sequence) not in BWT_list :
-            BWT_list.append(sequence)
-
-    BWT_list = sorted(BWT_list)
-    BWT = []
-    F = []
-    for i in BWT_list :
-        BWT.append(i[-1])
-        F.append(i[0])
-    return BWT, F
-
+    bwt = []
+    for i in range(len(sa)):
+        bwt.append(sequence[sa[i]-1])
+    return bwt
 ################CHECK IF PARSER IS FULL################
 if format(args) != 'Namespace()':
     ref = open(str(args.ref), 'r')
@@ -62,19 +51,19 @@ if format(args) != 'Namespace()':
     for line in ref :
         line = str(line).replace('\n','') ##add to delete line break
         if '>' not in line :
-            sequence = str(line) + '$'
+            sequence = str(line)+"$"
 
 
     ################SA[i] KEEP BACK################
     sa = tks.simple_kark_sort(sequence) ##keep back of SA[i] calculated thanks to tools_karkkainen_sanders
-    get_BWT(sequence)
+    get_BWT(sequence,sa)
 
     ################CREATION OF OUT FILE################
     """
     Save the index in a file as dataframe format, path indication in argues at the beginning
     """
 
-    d = {'SA[i]' : sa, 'F' : get_BWT(sequence)[-1], 'BWT' : get_BWT(sequence)[0]}
+    d = {'SA[i]' : sa,'BWT' : get_BWT(sequence,sa)}
     df = pd.DataFrame(data = d)
     df.to_csv(str(args.out), encoding= 'utf-8', index=False, mode = 'w', header = True)
 
