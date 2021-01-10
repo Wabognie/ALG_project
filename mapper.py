@@ -37,6 +37,7 @@ def get_N(BWT):
     :return:    For each nucleotide return its count
     :rtype:     dictionnary -> key : nucleotide (A,T,C or G) ; value : count
     """
+
     n = {"$": 0, "A": 0, "C":0, "G": 0, "T":0} # key = letter, value = number of occurrences
     for letter in BWT:
         n[letter] += 1
@@ -83,7 +84,6 @@ def get_querry(pattern: str, bwt: str, n: {}, r: [], sa: [int]) :
     :rtype:    2 conditions : if there is one position -> int
                               if there are many positions -> list of int
     """
-
     start = 0
     stop = len(bwt)-1
     # read the pattern from right to left
@@ -153,7 +153,7 @@ def left_first(alpha: chr, k: int, n: {}) -> int:
     raise ValueError(f"Character {alpha} not in the bwt")
 
 ################OPEN READS FILE################
-def search_querry(reads, k_mer, index) :
+def search_querry(reads, k_mer, index, N, R) :
     """
         This function searches correspondance(s) of kmers in a sequence thanks to its index.
 
@@ -181,11 +181,14 @@ def search_querry(reads, k_mer, index) :
         - the sens of the strand where the correspondance is found, + for sense and - for antisense
 
     """
+    print("BEGIN SEARCH")
     list_querry = []
     read_information = {}
     for read_lines in reads : #Read the file in both senses
+        print(read_lines)
         read_lines = str(read_lines).replace('\n','')
         if '>' not in read_lines : #Indicates which read is on which strand.
+
             reverse_read_lines = reverse_transcript(str(read_lines))
             kmer_sai = {}
             k_mer_modified = k_mer
@@ -197,22 +200,23 @@ def search_querry(reads, k_mer, index) :
                 read_information['-'].append(str(reverse_read_lines))
 
             for x in range(0, len(read_lines)-k_mer_modified+1): #Search correspondance in the genome
-                sai_querry = get_querry(str(read_lines[x:k_mer_modified]),index['BWT'], get_N(index['BWT']),R_table(index['BWT']), index['SA[i]'])
+                sai_querry = get_querry(str(read_lines[x:k_mer_modified]),index['BWT'], N, R, index['SA[i]'])
                 if sai_querry: #Verify if the list is full Find a new correspondance on the sense strand and add it in the dictionary
                     kmer_sai[str(read_lines[x:k_mer_modified]),x] = [sai_querry,x, "+"] ##(sai_querry,x)
 
                 else : #Find a new correspondance on the antisense strand and add it in the dictionary
-                    sai_querry = get_querry(str(reverse_read_lines[x:k_mer_modified]),index['BWT'], get_N(index['BWT']),R_table(index['BWT']), index['SA[i]'])
+                    sai_querry = get_querry(str(reverse_read_lines[x:k_mer_modified]),index['BWT'],N, R, index['SA[i]'])
                     kmer_sai[str(reverse_read_lines[x:k_mer_modified]),x] = [sai_querry,x, "-"] ##(sai_querry,x)
 
                 k_mer_modified +=1
             list_querry.append(kmer_sai)
+    print("END OF SEARCH")
 
     return(list_querry,read_information)
 
 
 
-def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_mer) :
+def comparison(or_sequence, reads, start_comparison, max_substitution) :
     '''
         Align two sequences from a given position and return the number of substition and the starting alignment position
 
@@ -220,16 +224,13 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
         :param reads: A fasta file containing sequences of nucleotids
         :param start_comparison: The position of the beginning of alignment
         :param max_substitution: The maximum of differences allowed between both sequences
-        :param index_k_mer: The position of a kmer, in the read
         :type or_sequence: string
         :type reads: fasta file
         :type start_comparison: int
         :type max_substitution: int
-        :type index_k_mer: int
         :return: The number of substitutions and the position of the beginning of alignement
         :rtype: list
     '''
-
 
     index_subs = []
 
@@ -237,17 +238,18 @@ def comparison(or_sequence, reads, start_comparison, max_substitution, index_k_m
     if start_comparison <= len(or_sequence)-len(reads) :
         substitution = 0
         for x in range(len(reads)): #For each read, save the substitutions
-            if or_sequence[comparison_changed] != reads[x]:
+            if or_sequence[comparison_changed] is not reads[x] and substitution <= max_hamming:
                 substitution +=1
                 result = (or_sequence[comparison_changed], comparison_changed, reads[x])
-                index_subs.append(result)
+                if result not in index_subs :
+                    index_subs.append(result)
             comparison_changed+=1
 
-        if len(index_subs) <= max_substitution:
-            p = [start_comparison,index_subs]
 
-        else :
-            p = ['','']
+    if len(index_subs) <= max_substitution:
+        p = [start_comparison,index_subs]
+    else :
+        p = ['','']
     return(p)
 
 def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) :
@@ -261,18 +263,14 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
         :type querry_found: dictionary
         :type max_hamming: int
     """
-    end = time.time()
-
-    time_to_analyse = end-start
-    print("TIME FOR ANALYSE BEGIN SEED: " + str(round(time_to_analyse,3)) + " secondes")
-
-
+    print("BEGIN SEED AND EXTEND")
     sequence = sequence[:-1]
     sai_of_kmer = querry_found[0]
     reads = querry_found[-1]
     substituion_info = []
 
     for x in range(0,len(sai_of_kmer)) : ##For each read
+        #print(x)
         comparison_result = {}
         list_of_position = []
         for y in range(0,len(sai_of_kmer[x])): ##For each kmer of a read
@@ -289,12 +287,9 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
                             list_of_position.append(start_comparison)
 
             for pos in list_of_position :
-                results = comparison(sequence, read_good_sense, pos, max_hamming, index_kmer)
-                if (results[0]) not in comparison_result.keys(): #If the number of substitutions is not already in the dictionary, create a new key
+                results = comparison(sequence, read_good_sense, pos, max_hamming)
+                if (results[0]) not in comparison_result.keys() and results[0] != '': #If the number of substitutions is not already in the dictionary, create a new key
                     comparison_result[(results[0])] = [(results[1],k_mer_sens)]
-                else : #Else, add the results to the existing key
-                    comparison_result[(results[0])].append((results[1],k_mer_sens))
-
 
         for key in comparison_result.keys():
             for i in comparison_result[key][0][0] :
@@ -316,7 +311,7 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
     df = pd.DataFrame(data = d)
     df = df.sort_values('POS')
     df.to_csv(str(output), index = False, encoding= 'utf-8', mode = 'a', header = True, sep='\t')
-
+    print("END")
 
 ################CHECK IF PARSER IS FULL################
 if format(args) != 'Namespace()':
@@ -345,8 +340,7 @@ if format(args) != 'Namespace()':
         line = str(line).replace('\n','')
         if '>' not in line :
             sequence = str(line) + '$'
-
-    seed_and_extend(sequence, search_querry(reads, k_mer, index), max_hamming, min_abundance, output)
+    seed_and_extend(sequence, search_querry(reads, k_mer, index,get_N(index["BWT"]),R_table(index["BWT"])), max_hamming, min_abundance, output)
 else :
     print("Obligation to inform all argues to search substitutions \n")
     print("For some help write : \'mapper.py --help\' in control terminal")
