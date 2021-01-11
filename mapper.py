@@ -9,7 +9,6 @@ Tiphaine Casy
 import pandas as pd
 import argparse
 import time
-from progress.bar import Bar
 from collections import Counter
 
 ################PARSER SECTION################
@@ -92,6 +91,8 @@ def get_querry(pattern: str, bwt: str, n: {}, r: [], sa: [int]) :
         new_start = get_down(bwt, current_char, start, stop)
         if new_start == -1:
             return []
+            break
+
         else :
             new_stop = get_up(bwt, current_char, start, stop)
             start = left_first(bwt[new_start], r[new_start], n)
@@ -218,7 +219,7 @@ def search_querry(reads, k_mer, index, N, R, max_hamming) :
 
 
 
-def comparison(or_sequence, reads, start_comparison, max_substitution) :
+def comparison(or_sequence, reads, start_comparison, max_hamming) :
     '''
         Align two sequences from a given position and return the number of substition and the starting alignment position
 
@@ -243,12 +244,13 @@ def comparison(or_sequence, reads, start_comparison, max_substitution) :
             if or_sequence[comparison_changed] is not reads[x] and substitution <= max_hamming:
                 substitution +=1
                 result = (or_sequence[comparison_changed], comparison_changed, reads[x])
-                if result not in index_subs :
-                    index_subs.append(result)
+                #if result not in index_subs :
+                index_subs.append(result)
+
             comparison_changed+=1
 
 
-    if len(index_subs) <= max_substitution:
+    if len(index_subs) <= max_hamming:
         p = [start_comparison,index_subs]
     else :
         p = ['','']
@@ -270,23 +272,22 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
     sai_of_kmer = querry_found[0]
     reads = querry_found[-1]
     substituion_info = []
-
+    #print(sai_of_kmer)
     for x in range(0,len(sai_of_kmer)) : ##For each read
-        #print(x)
         comparison_result = {}
         list_of_position = []
         for y in range(0,len(sai_of_kmer[x])): ##For each kmer of a read
             sai_values = list(sai_of_kmer[x].values())[y][0]
-            index_kmer = list(sai_of_kmer[x].values())[y][1]
-            k_mer_sens = list(sai_of_kmer[x].values())[y][-1]
 
-            read_good_sense = reads[k_mer_sens][x]
-            if isinstance(sai_values, list): ##verify if there is several positions of alignment
-                for i in sai_values : #For each correspondance
-                    if i != '':
-                        start_comparison = int(i-index_kmer)
-                        if start_comparison >= 0 and start_comparison not in list_of_position:
-                            list_of_position.append(start_comparison)
+            for i in sai_values :
+                if i != '':
+                    index_kmer = list(sai_of_kmer[x].values())[y][1]
+                    k_mer_sens = list(sai_of_kmer[x].values())[y][-1]
+                    start_comparison = int(i-index_kmer)
+                    read_good_sense = reads[k_mer_sens][x]
+                    if start_comparison >= 0 and start_comparison not in list_of_position:
+                        list_of_position.append(start_comparison)
+                    elif start_comparison in list_of_position  : break
 
             for pos in list_of_position :
                 results = comparison(sequence, read_good_sense, pos, max_hamming)
@@ -319,7 +320,6 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
 
 ################CHECK IF PARSER IS FULL################
 if format(args) != 'Namespace()':
-
     ref = open(str(args.ref), 'r')
     index = pd.read_csv(str(args.index))
     reads = open(str(args.reads), 'r')
