@@ -158,7 +158,7 @@ def left_first(alpha: chr, k: int, n: {}) -> int:
     raise ValueError(f"Character {alpha} not in the bwt")
 
 ################OPEN READS FILE################
-def search_querry(reads, k_mer, index, N, R, max_hamming) :
+def search_querry(reads, k_mer, index, N, R) :
     """
         This function searches correspondance(s) of kmers in a sequence thanks to its index.
 
@@ -202,7 +202,7 @@ def search_querry(reads, k_mer, index, N, R, max_hamming) :
                 read_information['-'].append(str(reverse_read_lines))
 
             kmer_list = k_mer_creation(str(read_lines), int(k_mer))
-            kmer_reversed_list = k_mer_creation(reverse_transcript(str(read_lines)), int(k_mer))
+            kmer_reversed_list = k_mer_creation(str(reverse_read_lines), int(k_mer))
             for x in range(0,len(kmer_list)) :
                 sai_querry = get_querry(kmer_list[x],index['BWT'], N, R, index['SA[i]'])
                 if sai_querry : #Verify if the list is full Find a new correspondance on the sense strand and add it in the dictionary
@@ -222,7 +222,6 @@ def k_mer_creation(sequence, kmer_size):
         k_mer.append(str(sequence[x:k_mer_modified]))
         k_mer_modified += 1
     return(k_mer)
-
 
 def comparison(or_sequence, reads, start_comparison, max_hamming) :
     '''
@@ -351,17 +350,17 @@ if format(args) != 'Namespace()':
         if '>' not in line :
             sequence = str(line) + '$'
 
-    seed_and_extend(sequence, search_querry(reads, k_mer, index,get_N(index["BWT"]),R_table(index["BWT"]), max_hamming), max_hamming, min_abundance, output)
-    """
-    for subs in range(0,int(max_hamming)+1) :
+    #seed_and_extend(sequence, search_querry(reads, k_mer, index,get_N(index["BWT"]),R_table(index["BWT"])), max_hamming, min_abundance, output)
+
+    for size in range(0,int(k_mer)+1) :
         print('##REFERENCE : ' + str(args.ref))
         print('##READS : ' + str(args.reads))
-        print('##K : ' + str(k_mer))
-        print('##MAX_SUBS : ' + str(subs))
+        print('##K : ' + str(size))
+        print('##MAX_SUBS : ' + str(max_hamming))
         print('##MIN_ABUNDANCE : ' + str(min_abundance))
-        result = seed_and_extend(sequence, search_querry(reads, k_mer, index,get_N(index["BWT"]),R_table(index["BWT"]), max_hamming), max_hamming, min_abundance, output)
-        opt = os.system('python validation.py ' + str(result) + ' ecoli_mutated_truth.vcf')
-    """
+        seed_and_extend(sequence, search_querry(reads, size, index,get_N(index["BWT"]),R_table(index["BWT"])), max_hamming, min_abundance, output)
+        opt = os.system('python validation.py ' + str(output) + ' ecoli_mutated_truth.vcf')
+
 
 else :
     print("Obligation to inform all argues to search substitutions \n")
