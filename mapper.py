@@ -204,7 +204,7 @@ def search_querry(reads, k_mer, index, N, R, max_hamming) :
 
             for x in range(0, len(read_lines)-k_mer_modified+1): #Search correspondance in the genome
                 sai_querry = get_querry(str(read_lines[x:k_mer_modified]),index['BWT'], N, R, index['SA[i]'])
-                if sai_querry: #Verify if the list is full Find a new correspondance on the sense strand and add it in the dictionary
+                if sai_querry : #Verify if the list is full Find a new correspondance on the sense strand and add it in the dictionary
                     kmer_sai[str(read_lines[x:k_mer_modified]),x] = [sai_querry,x, "+"] ##(sai_querry,x)
 
                 else : #Find a new correspondance on the antisense strand and add it in the dictionary
@@ -244,11 +244,8 @@ def comparison(or_sequence, reads, start_comparison, max_hamming) :
             if or_sequence[comparison_changed] is not reads[x] and substitution <= max_hamming:
                 substitution +=1
                 result = (or_sequence[comparison_changed], comparison_changed, reads[x])
-                #if result not in index_subs :
                 index_subs.append(result)
-
             comparison_changed+=1
-
 
     if len(index_subs) <= max_hamming:
         p = [start_comparison,index_subs]
@@ -319,6 +316,8 @@ def seed_and_extend(sequence, querry_found, max_hamming, min_abundance, output) 
     print("END")
 
 ################CHECK IF PARSER IS FULL################
+
+
 if format(args) != 'Namespace()':
     ref = open(str(args.ref), 'r')
     index = pd.read_csv(str(args.index))
