@@ -23,22 +23,24 @@ start = time.time()
 ################F,i,BWT KEEP BACK################
 def get_BWT(sequence,sa):
     """
-    Function used to keep back sorted Burrows Wheeler sequences
+    Function used to keep back Burrows Wheeler Transform of a sequence
 
     :param sequence: reference sequence with "$" at the end (i.e : "READ AND KEEPBACK SEQUENCE OF INPUT FILE" part)
     :type sequence: string
 
+    :param sa : list of sorted number of suffixe
+    :type : list of number
+
     :return:    'BWT' corresponding to the last caractere of sorted Burrows Wheeler sequences
-                'F' corresponding to the first caractere of sorted Burrows Wheeler sequences
+
     :rtype:     list
-                list
     """
-    ### function used to keep back sorted BW sequences into a list('BWT_list')
-    ### first letter of BW sequences ('F') and last one ('BWT')
     bwt = []
     for i in range(len(sa)):
         bwt.append(sequence[sa[i]-1])
     return bwt
+
+
 ################CHECK IF PARSER IS FULL################
 if format(args) != 'Namespace()':
     ref = open(str(args.ref), 'r')
@@ -70,9 +72,6 @@ if format(args) != 'Namespace()':
 else :
     print("Obligation to inform all argues to search substitutions \n")
     print("For some help write : \'mapper.py --help\' in control terminal")
-
-
-
 
 ################TIME COUNT################
 end = time.time()
